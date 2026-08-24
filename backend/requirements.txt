@@ -1,0 +1,10 @@
+fastapi==0.115.*
+uvicorn[standard]
+sqlalchemy>=2.0
+psycopg[binary]
+pydantic-settings
+anthropic
+better-profanity        # placeholder; swap for real classifier
+spacy                   # lightweight NLP for style stats
+pytest
+httpx
