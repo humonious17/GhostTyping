@@ -78,7 +78,7 @@ export function ChatView({ sessionId, personLabel, mode, showRepeatCheckin, onEn
              replay: "Replay an exchange", goodbye: "Say goodbye", free: "Free writing" }[mode]}
         </span>
         <span aria-label={`${mins} minutes remaining`} className="tabular-nums">
-          {timeLeft > 0 ? `mins:{mins}:mins:{String(secs).padStart(2, "0")} left in this session` :
+          {timeLeft > 0 ? `${mins}:${String(secs).padStart(2, "0")} left in this session` :
             "Session time reached"}
         </span>
       </div>

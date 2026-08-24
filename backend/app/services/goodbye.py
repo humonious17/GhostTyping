@@ -1,6 +1,12 @@
-# app/services/goodbye.py
-"""5.2 'Say goodbye' — structured closing exercise ending in a FIXED,
-non-repeatable final message designed to create an ending, not open chat."""
+"""Server-side phases for the non-repeatable goodbye session."""
+
+import datetime as dt
+from enum import Enum
+
+from ..safety.middleware import build_system_prompt
+from .llm import generate_reply
+
+GOODBYE_MAX_TURNS = 6
 
 GOODBYE_FINAL_SYSTEM_ADDENDUM = """
 
@@ -11,40 +17,28 @@ It should feel like a natural goodbye, NOT an invitation to continue.
 Never suggest talking again, never leave things open-ended, never ask a question.
 """
 
-FINAL_MESSAGE_SENTINEL = "__GOODBYE_FINAL__"   # marks completion in the DB
+FINAL_MESSAGE_SENTINEL = "__GOODBYE_FINAL__"
 
 class GoodbyeState(str, Enum):
-    WRITING = "writing"      # user composing their goodbye, ghost responds briefly
+    WRITING = "writing"
     FINAL_READY = "final_ready"
     COMPLETED = "completed"
 
-def start_goodbye(session_row) -> dict:
-    if session_row.transcript:  # resume safety
-        raise ValueError("goodbye session already started")
-    return {"phase": GoodbyeState.WRITING}
 
-async def goodbye_turn(session_row, user_text: str, turns_taken: int) -> dict:
-    """User gets up to N turns to say what they need to; then the final message fires."""
-    MAX_TURNS_BEFORE_FINAL = 6
+GOODBYE_FINAL_SYSTEM_ADDENDUM = (
+    "\nThis is a closing writing exercise. Be brief and complete. "
+    "Do not invite more conversation or ask a question."
+)
 
-    reply = await generate_reply(
-        build_system_prompt(...) + GOODBYE_FINAL_SYSTEM_ADDENDUM,
-        session_row.transcript, user_text)
 
-    if turns_taken + 1 >= MAX_TURNS_BEFORE_FINAL:
-        return {"reply": reply["text"], "final_next": True}
-    return {"reply": reply["text"], "final_next": False}
-
-async def deliver_final_message(session_row) -> dict:
-    """Called once. After this, the session is force-closed server-side."""
-    resp = client.messages.create(
-        model=settings.llm_model,
-        max_tokens=120,
-        system=build_system_prompt(...) + GOODBYE_FINAL_SYSTEM_ADDENDUM +
-               "\nWrite the final goodbye message now.",
-        messages=session_row.transcript[-10:] or [{"role": "user", "content": "(closing)"}],
+async def deliver_final_message(session_row, thread) -> dict[str, str]:
+    samples = [m["text"] for m in thread.parsed_messages if m["speaker"] == "other"]
+    result = await generate_reply(
+        build_system_prompt(thread.style_profile or {}, samples) + GOODBYE_FINAL_SYSTEM_ADDENDUM,
+        session_row.transcript,
+        "Write the final goodbye message now.",
     )
-    session_row.ended_at = utcnow()
+    session_row.ended_at = dt.datetime.now(dt.timezone.utc)
     session_row.end_reason = "completed"
-    session_row.transcript.append({"role": "assistant", "content": FINAL_MESSAGE_SENTINEL})
-    return {"final_message": resp.content[0].text}
+    session_row.transcript.append({"role": "assistant", "content": result["text"]})
+    return {"final_message": result["text"]}

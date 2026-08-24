@@ -6,6 +6,7 @@ from backend.app.dependencies import require_onboarded
 from fastapi import APIRouter, HTTPException, Depends
 from ..db import get_db
 from ..models import Thread, Session as SessionRow, DeletionToken, User
+from ..services.storage import configured_store
 
 router = APIRouter(prefix="/privacy")
 
@@ -20,10 +21,15 @@ def delete_thread(thread_id: str, db=Depends(get_db), user: User = Depends(requi
         raise HTTPException(404)   # 404, not 403 — don't leak existence of others' threads
 
 
+    if thread.raw_blob_key:
+        try:
+            configured_store().delete(thread.raw_blob_key, thread.wrapped_dek)
+        except RuntimeError as exc:
+            db.rollback()
+            raise HTTPException(503, detail={"code": "raw_storage_delete_failed"}) from exc
+
     # Cascading delete across every derived artifact (8.4 step 6)
     db.query(SessionRow).filter_by(thread_id=thread.id).delete(synchronize_session=False)
-    # NOTE: in production, also enqueue removal of raw_blob_key from object storage
-    # and any cached embeddings before this commit returns.
 
     token = DeletionToken(thread_id=thread.id)   # id-only tombstone record
     db.add(token)

@@ -1,7 +1,7 @@
 const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(`BASE{BASE}BASE{path}`, {
+  const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json", ...opts?.headers },
     ...opts,
   });
@@ -35,10 +35,21 @@ export const api = {
       "/sessions/start", { method: "POST", body: JSON.stringify({ thread_id: threadId, mode }) }),
 
   send: (sessionId: string, text: string) =>
-    request<{ reply: string; crisis_resources_shown: boolean; time_remaining_sec: number }>(
+    request<{ reply: string; crisis_resources_shown: boolean; time_remaining_sec: number; phase?: "writing" | "final_ready" }>(
       "/sessions/send", { method: "POST", body: JSON.stringify({ session_id: sessionId, text }) }),
 
   deleteThread: (threadId: string) =>
     request<{ deleted: boolean; deletion_receipt: string }>(
       `/privacy/threads/${threadId}`, { method: "DELETE" }),
+
+  gates: () => request<{ age_confirmed_18_plus: boolean; onboarded: boolean }>("/account/gates"),
+
+  updateGates: (body: { age_confirmed_18_plus?: boolean; acknowledge_onboarding?: boolean }) =>
+    request<{ updated: boolean }>("/account/gates", {
+      method: "POST", body: JSON.stringify(body),
+    }),
+
+  deliverFinal: (sessionId: string) =>
+    request<{ final_message: string; session_closed: boolean }>(
+      `/sessions/${sessionId}/final`, { method: "POST" }),
 };

@@ -4,6 +4,12 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://gt:gt@localhost:5432/ghosttyping"
     anthropic_api_key: str = ""
     llm_model: str = "claude-sonnet-4-20250514"
+    jwt_secret: str = "change-me-in-production"
+    raw_imports_bucket: str = ""
+    kms_key_id: str = ""
+    posthog_api_key: str = ""
+    posthog_host: str = "http://posthog:8000"
+    analytics_salt: str = ""
 
     # PRD 5.1: minimum messages before style modeling is "reliable"
     min_messages_for_style: int = 40

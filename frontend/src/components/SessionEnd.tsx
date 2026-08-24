@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 export interface SessionEndData {
   reason: "completed" | "timebox" | "user_exit";
   messages: { role: string; content: string }[];
@@ -5,7 +7,7 @@ export interface SessionEndData {
 
 const MOOD_LABELS = ["Much worse", "A bit worse", "About the same", "A bit better", "Much better"];
 
-export function SessionEnd({ data, threadId }: { data: SessionEndData; threadId: string }) {
+export function SessionEnd({ data, threadId }: { data: SessionEndData & { sessionId?: string }; threadId: string }) {
   const [summary, setSummary] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [editedSummary, setEditedSummary] = useState("");
@@ -14,7 +16,11 @@ export function SessionEnd({ data, threadId }: { data: SessionEndData; threadId:
 
   // Fetch generated summary once (US-4)
   useEffect(() => {
-    fetch(`BASE/sessions/{BASE}/sessions/BASE/sessions/{data.sessionId}/summary`).then(r => r.json())
+    if (!data.sessionId) {
+      setSummary("Your reflection is ready to save locally.");
+      return;
+    }
+    fetch(`${import.meta.env.VITE_API_URL ?? "http://localhost:8000"}/sessions/${data.sessionId}/summary`).then(r => r.json())
       .then(d => { setSummary(d.summary); setEditedSummary(d.summary); })
       .catch(() => setSummary("We couldn't generate a summary — your transcript is still saved."));
   }, []);

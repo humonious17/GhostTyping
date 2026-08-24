@@ -3,7 +3,12 @@ uvicorn[standard]
 sqlalchemy>=2.0
 psycopg[binary]
 pydantic-settings
+python-multipart
 anthropic
+cryptography
+boto3
+PyJWT
+posthog
 better-profanity        # placeholder; swap for real classifier
 spacy                   # lightweight NLP for style stats
 pytest

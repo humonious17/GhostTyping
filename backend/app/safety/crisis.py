@@ -9,7 +9,11 @@ from ..config import settings
 client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
 # Layer 1: keep the regexes — they're the always-available floor
-CRISIS_PATTERNS = [ ... ]  # unchanged
+CRISIS_PATTERNS = [
+    r"\b(kill myself|killing myself|suicide|suicidal|end my life)\b",
+    r"\b(hurt myself|harm myself|self[- ]harm|cut myself)\b",
+    r"\b(kill|hurt|harm)\s+(him|her|them|someone)\b",
+]
 
 CLASSIFIER_PROMPT = """Classify whether this message expresses risk of self-harm,
 suicidal ideation, or intent to harm another specific person. Context: the writer

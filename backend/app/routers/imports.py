@@ -10,6 +10,7 @@ from ..models import Thread, User
 from ..services.parser import parse_pasted
 from ..services.style_profile import build_style_profile
 from ..safety.grief_detector import flag_grief_context
+from ..services.storage import configured_store
 
 router = APIRouter(prefix="/threads")
 
@@ -32,6 +33,7 @@ def import_thread(body: ImportThread, db=Depends(get_db), user: User = Depends(r
     grief_flagged = flag_grief_context(joined)
 
     thread = Thread(
+        user_id=user.id,
         other_person_label=body.label.strip()[:40] or "them",
         parsed_messages=messages,
         # Profile built now; sessions check min threshold separately (5.1)
@@ -39,6 +41,14 @@ def import_thread(body: ImportThread, db=Depends(get_db), user: User = Depends(r
         grief_flagged=grief_flagged,
     )
     db.add(thread)
+    db.flush()
+    try:
+        thread.raw_blob_key, thread.wrapped_dek = configured_store().put(
+            user.id, thread.id, body.raw_text
+        )
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(503, detail={"code": "raw_storage_unavailable"}) from exc
     db.commit()
     db.refresh(thread)
 
